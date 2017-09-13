@@ -9,5 +9,8 @@
 *.pdf
 *.py~
 
-
-
+# branch my_changes
+virtualenv
+.idea
+spearmint.egg-info
+.*swp
