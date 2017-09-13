@@ -187,6 +187,7 @@ import optparse
 import importlib
 import time
 import os
+import datetime
 
 import numpy as np
 
@@ -259,7 +260,12 @@ def main():
     db_address = options['database']['address']
     sys.stderr.write('Using database at %s.\n' % db_address)        
     db         = MongoDB(database_address=db_address)
-    
+
+    # trace execution
+    trace_index = 0
+    t1 = {}
+    t2 = {}
+
     while True:
 
         for resource_name, resource in resources.iteritems():
@@ -275,16 +281,30 @@ def main():
 
             while resource.acceptingJobs(jobs):
 
-                # Load jobs from DB 
+                # Load jobs from DB
                 # (move out of one or both loops?) would need to pass into load_tasks
                 jobs = load_jobs(db, experiment_name)
                 
                 # Remove any broken jobs from pending.
                 remove_broken_jobs(db, jobs, experiment_name, resources)
 
+                # trace execution
+                if len(jobs) > 0:
+                    t1['suggestion_runtime_ms'] = jobs[-1]['values']['main']
+                    print_trace(t1)
+
+                t2 = t1
+                start = datetime.datetime.now()
+
                 # Get a suggestion for the next job
                 suggested_job = get_suggestion(chooser, resource.tasks, db, expt_dir, options, resource_name)
-    
+
+                # trace execution
+                t1 = chooser.trace
+                trace_index += 1
+                t1['index'] = trace_index
+                t1['elapsed_s'] = (datetime.datetime.now() - start).total_seconds()
+
                 # Submit the job to the appropriate resource
                 process_id = resource.attemptDispatch(experiment_name, suggested_job, db_address, expt_dir)
 
@@ -400,6 +420,32 @@ def get_suggestion(chooser, task_names, db, expt_dir, options, resource_name):
     save_job(job, db, experiment_name)
 
     return job
+
+
+def print_trace(t):
+    t['print_date'] = datetime.datetime.now()
+    sys.stderr.write("\t".join([str(i) for i in ["TRACE",
+                                                 t['index'],
+                                                 t['print_date'],
+                                                 t.get('best_expected_algorithm', ''),
+                                                 t.get('best_expected_memory_access', ''),
+                                                 t.get('best_expected_multiplier', ''),
+                                                 t.get('best_expected_local_size', ''),
+                                                 t.get('best_expected_runtime_ms', ''),
+                                                 t.get('best_expected_runtime_ms_sd', ''),
+                                                 t.get('best_observed_algorithm', ''),
+                                                 t.get('best_observed_memory_access', ''),
+                                                 t.get('best_observed_multiplier', ''),
+                                                 t.get('best_observed_local_size', ''),
+                                                 t.get('best_observed_runtime_ms', ''),
+                                                 t['suggestion_algorithm'],
+                                                 t['suggestion_memory_access'],
+                                                 t['suggestion_multiplier'],
+                                                 t['suggestion_local_size'],
+                                                 t['suggestion_runtime_ms'],
+                                                 t['elapsed_s'],
+                                                 ]]) + "\n");
+
 
 def save_hypers(hypers, db, experiment_name):
     if hypers:

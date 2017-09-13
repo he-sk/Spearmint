@@ -222,6 +222,9 @@ class DefaultChooser(object):
     objective : dict
         ?
     """
+
+    trace = {}
+
     def __init__(self, options):
         self.grid_size = options.get('grid_size', DEFAULT_GRIDSIZE)
         self.grid_seed = options.get('grid_seed', DEFAULT_GRIDSEED)
@@ -325,6 +328,7 @@ class DefaultChooser(object):
             suggestion = self.task_group.from_unit(self.grid[self.design_index])
             sys.stderr.write("\nSuggestion:     ")
             self.task_group.paramify_and_print(suggestion.flatten(), left_indent=16)
+            self.add_variant(self.task_group.paramify(suggestion.flatten()), "suggestion")
             return suggestion
 
         # print 'inputs: %s' % self.objective['inputs']
@@ -403,6 +407,9 @@ class DefaultChooser(object):
 
         sys.stderr.write("\nSuggestion:     ")
         self.task_group.paramify_and_print(suggestion.flatten(), left_indent=16)
+
+        self.add_variant(self.task_group.paramify(suggestion.flatten()), "suggestion")
+
         return suggestion
 
     # TODO: add optimization in here
@@ -431,6 +438,9 @@ class DefaultChooser(object):
                 'is %.5f (+/- %.5f), at location:\n' % (unnormalized_best_value, unnormalized_std_at_best))
             self.task_group.paramify_and_print(self.task_group.from_unit(current_best_location).flatten(), 
                                                left_indent=16, indent_top_row=True)
+            self.trace['best_expected_runtime_ms'] = unnormalized_best_value
+            self.trace['best_expected_runtime_ms_sd'] = unnormalized_std_at_best
+            self.add_variant(self.task_group.paramify(self.task_group.from_unit(current_best_location).flatten()), "best_expected")
 
             # Compute the best value seen so far
             vals = self.task_group.values[self.objective['name']]
@@ -441,6 +451,8 @@ class DefaultChooser(object):
             # Don't need to un-normalize inputs here because these are the raw inputs
             sys.stderr.write('\nMinimum of observed values is %f, at location:\n' % best_observed_value)
             self.task_group.paramify_and_print(best_observed_location.flatten(), left_indent=16, indent_top_row=True)
+            self.trace['best_observed_runtime_ms'] = best_observed_value
+            self.add_variant(self.task_group.paramify(best_observed_location.flatten()), 'best_observed')
 
         else:
 
@@ -501,9 +513,13 @@ class DefaultChooser(object):
                 sys.stderr.write('\nBest observed values satisfying constraints is %f, at location:\n' % best_observed_value)
                 self.task_group.paramify_and_print(best_observed_location.flatten(), left_indent=16, indent_top_row=True)
 
-
         # Return according to model, not observed
         return current_best_value, current_best_location
+
+    def add_variant(self, variant, prefix):
+        t = self.trace
+        for dimension, value in variant.items():
+            t['%s_%s' % (prefix, dimension)] = int(value['values'][0])
 
     def numConstraints(self):
         return len(self.constraints)
