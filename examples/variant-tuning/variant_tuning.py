@@ -35,7 +35,7 @@ AND local_size = ?"""
             _max)
 
     # simulate measurement
-    runtime_ms, = numpy.random.normal(_mean, _sd, 1)
+    runtime_ms = numpy.random.normal(_mean, _sd)
     if runtime_ms < 0:
         print "Simulated runtime is negative: %.3f; mean = %.3f, sd = %.3f; clipping to measured minimum: %.3f" % (
             runtime_ms, _mean, _sd, _min)
@@ -47,7 +47,7 @@ AND local_size = ?"""
     elif runtime_ms > _mean + 5 * _sd:
         print "Simulated runtime is too high: %.3f; mean = %.3f, sd = %.3f; clipping to measured maximum: %.3f" % (
             runtime_ms, _mean, _sd, _max)
-    runtime_ms = _max
+        runtime_ms = _max
     print "Measurement for mean = %.3f, sd = %.3f: %.3f" % (_mean, _sd, runtime_ms)
     return runtime_ms
 
