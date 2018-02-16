@@ -424,7 +424,8 @@ def get_suggestion(chooser, task_names, db, expt_dir, options, resource_name):
 
 def print_trace(t):
     t['print_date'] = datetime.datetime.now()
-    sys.stderr.write("\t".join([str(i) for i in ["TRACE",
+    if "index" in t:
+        sys.stderr.write("\t".join([str(i) for i in ["TRACE",
                                                  t['index'],
                                                  t['print_date'],
                                                  t.get('best_expected_algorithm', ''),
